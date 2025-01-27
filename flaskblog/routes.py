@@ -1,10 +1,11 @@
-from flask import Flask, flash, redirect, render_template, url_for
+from flask import flash, redirect, render_template, url_for
 
-from form import LoginForm, RegistrationForm
+from flaskblog import app, bcrypt, db
+from flaskblog.form import LoginForm, RegistrationForm
+from flaskblog.models import Post, User
 
-app = Flask(__name__) ## (__name__) to determine the root path of the application
+app.app_context().push()
 
-app.config['SECRET_KEY'] ='053cef18c8b4a5275844424b6a7339de'
 posts=[
     {
         'author':'Elliot Alderson',
@@ -33,8 +34,12 @@ def about():
 def register():
     form=RegistrationForm()
     if form.validate_on_submit():
-        flash(f'Account created for {form.username.data}!','success')
-        return redirect(url_for('home'))
+        hashed_password=bcrypt.generate_password_hash(form.password.data).decode("utf-8")
+        user=User(username=form.username.data,email=form.email.data,password=hashed_password)
+        db.session.add(user)
+        db.session.commit()
+        flash('Your account has been created! You are now able to log in','success')
+        return redirect(url_for('login'))
     return render_template('register.html',title='Register',form=form)
 @app.route("/login",methods=["GET","POST"])
 def login():
@@ -46,5 +51,3 @@ def login():
         else:
             flash('Login Unsuccessful. Please check username and password','danger')
     return render_template('login.html',title='Login',form=form)
-if __name__ == "__main__":
-    app.run(debug=True)
